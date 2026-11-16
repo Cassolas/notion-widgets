@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Now — date, time & calendar</title>
+  <!--
+    Dusty brown clock + calendar for Cass's Notion Life Hub.
+    Live: https://cassolas.github.io/notion-widgets/clock-calendar.html
+    Recommended Notion embed: full column width (about 240–280px), height 360px.
+    Time zone follows the viewer's browser, defaulting to America/Los_Angeles.
+    Optional query params: ?tz=America/Los_Angeles  ?freeze=2026-11-15T20:44:00  ?bg=dark
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Dark-warm theme: sits softly on Notion #191919 */
+      --tan: #BE9A72;
+      --tan-deep: #A9845F;
+      --caramel: #C4A06E;
+      --pill: #8F7048;
+      --panel: #534536;
+      --ink: #2A1C12;
+      --ink-soft: #2A1C12;
+      --day: #E8D4B8;
+      --muted: #B59A78;
+      --faded: #B59A78;
+      --today-text: #2A1C12;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 18px rgba(0, 0, 0, 0.28);
+      --border: rgba(200, 162, 126, 0.36);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: transparent;
+      overflow: hidden;
+      font-family: Nunito, "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Optional preview backgrounds, used only with ?bg= */
+    body[data-bg="dark"] { background: #191919; padding: 16px; overflow: auto; }
+    body[data-bg="light"] { background: #f3efe8; padding: 16px; overflow: auto; }
+
+    .card {
+      container-type: inline-size;
+      width: 100%;
+      max-width: 100%;
+      border-radius: 18px;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .clock {
+      background: linear-gradient(180deg, #BE9A72 0%, #B8956C 100%);
+      color: var(--ink);
+      text-align: center;
+      padding: 0.92rem 0.85rem 0.72rem;
+    }
+
+    .time {
+      font-weight: 800;
+      font-size: clamp(2rem, 16cqi, 2.65rem);
+      line-height: 1;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+    }
+
+    .time .period {
+      font-size: 0.38em;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      margin-left: 0.34em;
+      position: relative;
+      top: -0.52em;
+      color: var(--ink-soft);
+    }
+
+    .date-line {
+      margin-top: 0.38rem;
+      font-size: clamp(0.72rem, 4.6cqi, 0.86rem);
+      font-weight: 700;
+      color: var(--ink-soft);
+      letter-spacing: 0.01em;
+    }
+
+    .cal {
+      background: var(--panel);
+      padding: 0.62rem 0.65rem 0.88rem;
+    }
+
+    .month-nav {
+      display: grid;
+      grid-template-columns: 1.8rem 1fr 1.8rem;
+      align-items: center;
+      background: var(--pill);
+      color: #F3E6D4;
+      border-radius: 999px;
+      height: 1.8rem;
+      margin: 0 0.1rem 0.48rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .month-nav button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      height: 100%;
+      width: 100%;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-size: 0.85rem;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .month-nav button:hover,
+    .month-nav button:focus-visible {
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+    }
+
+    .month-label {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      font-size: clamp(0.66rem, 4.4cqi, 0.78rem);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      text-align: center;
+      padding: 0;
+      height: 100%;
+    }
+
+    .month-label:hover,
+    .month-label:focus-visible {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      outline: none;
+    }
+
+    .dow, .grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      text-align: center;
+    }
+
+    .dow {
+      margin-bottom: 0.15rem;
+    }
+
+    .dow span {
+      font-size: clamp(0.58rem, 3.8cqi, 0.68rem);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding: 0.15rem 0 0.25rem;
+    }
+
+    .grid button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--day);
+      font-family: inherit;
+      font-weight: 700;
+      font-size: clamp(0.72rem, 4.7cqi, 0.86rem);
+      height: clamp(1.48rem, 9cqi, 1.68rem);
+      width: 100%;
+      display: grid;
+      place-items: center;
+      cursor: default;
+      position: relative;
+      border-radius: 999px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .grid button.outside {
+      color: var(--faded);
+      font-weight: 600;
+    }
+
+    .grid button.today {
+      background: var(--caramel);
+      color: var(--today-text);
+      font-weight: 800;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    }
+
+    .grid button.today:not(.outside) {
+      cursor: default;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <section class="clock" aria-live="polite" aria-atomic="true">
+      <div class="time" id="time">
+        <span id="hours">8</span>:<span id="minutes">44</span><span class="period" id="period">PM</span>
+      </div>
+      <div class="date-line" id="dateLine">November 15, 2026</div>
+    </section>
+    <section class="cal" aria-label="Calendar">
+      <div class="month-nav">
+        <button type="button" id="prev" aria-label="Previous month">
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M7.2 1.2 3.4 5l3.8 3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" class="month-label" id="monthLabel" title="Jump to this month">NOVEMBER</button>
+        <button type="button" id="next" aria-label="Next month">
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.8 1.2 6.6 5l-3.8 3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="dow" aria-hidden="true">
+        <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+      </div>
+      <div class="grid" id="grid" role="grid" aria-labelledby="monthLabel"></div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const tzParam = params.get("tz");
+      const TZ = tzParam || Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Los_Angeles";
+      const freeze = params.get("freeze");
+      const bg = params.get("bg");
+      if (bg === "dark" || bg === "light") document.body.dataset.bg = bg;
+
+      let viewYear, viewMonth; // month is 0-based
+      let timer;
+
+      function now() {
+        if (freeze) {
+          const d = new Date(freeze);
+          return isNaN(d.getTime()) ? new Date() : d;
+        }
+        return new Date();
+      }
+
+      function parts(date, options) {
+        const fmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, ...options });
+        const out = {};
+        for (const p of fmt.formatToParts(date)) out[p.type] = p.value;
+        return out;
+      }
+
+      function wallDate(date) {
+        const p = parts(date, { year: "numeric", month: "numeric", day: "numeric" });
+        return {
+          year: Number(p.year),
+          month: Number(p.month) - 1,
+          day: Number(p.day)
+        };
+      }
+
+      function renderClock(date) {
+        const p = parts(date, {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+          month: "long",
+          day: "numeric",
+          year: "numeric"
+        });
+        document.getElementById("hours").textContent = p.hour;
+        document.getElementById("minutes").textContent = p.minute;
+        document.getElementById("period").textContent = (p.dayPeriod || "").toUpperCase();
+        document.getElementById("dateLine").textContent = p.month + " " + p.day + ", " + p.year;
+      }
+
+      function daysInMonth(year, month) {
+        return new Date(year, month + 1, 0).getDate();
+      }
+
+      function startOffset(year, month) {
+        // Sunday-start, in the user's wall calendar (not UTC)
+        return new Date(year, month, 1).getDay();
+      }
+
+      function renderCalendar(anchor) {
+        const today = wallDate(anchor);
+        if (viewYear == null) {
+          viewYear = today.year;
+          viewMonth = today.month;
+        }
+
+        const label = new Date(viewYear, viewMonth, 1).toLocaleString("en-US", {
+          month: "long",
+          year: viewYear === today.year ? undefined : "numeric"
+        });
+        const monthLabel = document.getElementById("monthLabel");
+        monthLabel.textContent = label.toUpperCase();
+        monthLabel.setAttribute("aria-label", "Show current month, currently " + label);
+
+        const dim = daysInMonth(viewYear, viewMonth);
+        const start = startOffset(viewYear, viewMonth);
+        const prevDim = daysInMonth(viewYear, viewMonth - 1);
+
+        const cells = [];
+        for (let i = 0; i < 42; i++) {
+          const dayNum = i - start + 1;
+          let y = viewYear, m = viewMonth, d = dayNum, outside = false;
+          if (dayNum < 1) {
+            const prev = new Date(viewYear, viewMonth, 0);
+            y = prev.getFullYear();
+            m = prev.getMonth();
+            d = prevDim + dayNum;
+            outside = true;
+          } else if (dayNum > dim) {
+            const next = new Date(viewYear, viewMonth + 1, 1);
+            y = next.getFullYear();
+            m = next.getMonth();
+            d = dayNum - dim;
+            outside = true;
+          }
+          const isToday = y === today.year && m === today.month && d === today.day;
+          cells.push({ d, outside, isToday, label: (isToday ? "Today, " : "") + new Date(y, m, d).toLocaleDateString("en-US", { month: "long", day: "numeric" }) });
+        }
+
+        const grid = document.getElementById("grid");
+        grid.replaceChildren();
+        for (const cell of cells) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = String(cell.d);
+          btn.tabIndex = -1;
+          if (cell.outside) btn.classList.add("outside");
+          if (cell.isToday) btn.classList.add("today");
+          btn.setAttribute("aria-label", cell.label);
+          if (cell.isToday) btn.setAttribute("aria-current", "date");
+          grid.appendChild(btn);
+        }
+      }
+
+      function tick() {
+        const d = now();
+        renderClock(d);
+        renderCalendar(d);
+      }
+
+      document.getElementById("prev").addEventListener("click", function () {
+        const dt = new Date(viewYear, viewMonth - 1, 1);
+        viewYear = dt.getFullYear();
+        viewMonth = dt.getMonth();
+        renderCalendar(now());
+      });
+
+      document.getElementById("next").addEventListener("click", function () {
+        const dt = new Date(viewYear, viewMonth + 1, 1);
+        viewYear = dt.getFullYear();
+        viewMonth = dt.getMonth();
+        renderCalendar(now());
+      });
+
+      document.getElementById("monthLabel").addEventListener("click", function () {
+        const t = wallDate(now());
+        viewYear = t.year;
+        viewMonth = t.month;
+        renderCalendar(now());
+      });
+
+      tick();
+      if (!freeze) {
+        // Align the next tick to the upcoming second, then every second
+        // so the minute rolls over immediately.
+        const ms = 1000 - (Date.now() % 1000);
+        setTimeout(function () {
+          tick();
+          timer = setInterval(tick, 1000);
+        }, ms);
+      }
+    })();
+  </script>
+</body>
+</html>
