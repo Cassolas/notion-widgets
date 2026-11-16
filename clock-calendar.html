@@ -52,15 +52,17 @@
       max-width: 100%;
       border-radius: 18px;
       overflow: hidden;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
+      background: transparent;
+      border: 0;
+      box-shadow: none;
       display: flex;
       flex-direction: column;
     }
 
     .clock {
-      background: linear-gradient(180deg, #BE9A72 0%, #B8956C 100%);
+      background: transparent;
+      --ink: #E8D4B8;
+      --ink-soft: #C4A06E;
       color: var(--ink);
       text-align: center;
       padding: 0.92rem 0.85rem 0.72rem;
@@ -94,7 +96,7 @@
     }
 
     .cal {
-      background: var(--panel);
+      background: transparent;
       padding: 0.62rem 0.65rem 0.88rem;
     }
 
